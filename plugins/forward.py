@@ -22,7 +22,7 @@ async def count(bot, m):
 
 @Client.on_message(filters.command('total'))
 async def total(bot, message):
-    if message.from_user.id not in OWNER:
+    if int(message.from_user.id) != OWNER:
         return await message.reply_text("Who the hell are you!!")
     msg = await message.reply("Counting total messages in DB...", quote=True)
     try:
