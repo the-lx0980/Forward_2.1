@@ -1,4 +1,4 @@
-import os import getenv
+from os import getenv
 class Config:   
     APP_ID = int(getenv("APP_ID", "21288218"))
     API_HASH = getenv("API_HASH", "dd47d5c4fbc31534aa764ef9918b3acd")
