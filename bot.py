@@ -22,7 +22,7 @@ class Bot(Client):
         super().__init__(
             name="bot_session",
             api_hash=Config.API_HASH,
-            api_id=Config.APP_ID,
+            api_id=Config.API_ID,
             bot_token=Config.TG_BOT_TOKEN,
             sleep_threshold=5,
             workers=50,
