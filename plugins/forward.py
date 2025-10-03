@@ -51,7 +51,7 @@ async def forward(bot, message):
         await message.reply_text("A task is already running.")
         return
 
-    m = await bot.send_message(chat_id=message.from_user.id, text="Started Forwarding....")
+    m = await bot.send_message(chat_id= message.from_user.id, text="Started Forwarding....")
 
     while await Data.count_documents() != 0:
         data = await get_search_results()
@@ -102,7 +102,7 @@ async def forward(bot, message):
     try:
         await m.edit(text=f'Successfully Forwarded {MessageCount} messages')
     except Exception as e:
-        await bot.send_message(OWNER, e)
+        await bot.send_message(message.from_user.id, e)
         logger.exception(e)
         pass
 
