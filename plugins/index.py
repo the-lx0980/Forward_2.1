@@ -41,6 +41,7 @@ async def run(bot, message):
             await chat.reply_text("Wrong URL")
             continue
 
+
     channel_id = re.search(r"t.me.(.*)", channel)
     chat_usr = channel_id.group(1)
     try:
@@ -49,7 +50,7 @@ async def run(bot, message):
         logger.exception(e)
         return await message.reply(f"{e}")
     CHANNEL[message.from_user.id] = chat.username 
-
+    
 
     while True:
         try:
@@ -62,6 +63,7 @@ async def run(bot, message):
             logger.info(SKIP.text)
         except TimeoutError:
             return await bot.send_message(message.from_user.id, "Error!!\n\nRequest timed out.\nRestart by using /index")
+
         try:
             SKIN_NO[message.from_user.id] = int(SKIP.text)
             break
@@ -80,12 +82,14 @@ async def run(bot, message):
             logger.info(end_id.text)
         except TimeoutError:
             return await bot.send_message(message.from_user.id, "Error!!\n\nRequest timed out.\nRestart by using /index")
+
         try:
             END_MSG_ID[message.from_user.id] = int(end_id.text)
             break
         except ValueError:
             await end_id.reply_text("That's an invalid ID. It should be an integer.")
             continue
+
     buttons = InlineKeyboardMarkup(
         [[
             InlineKeyboardButton("Index Media", callback_data="index")
