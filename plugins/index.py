@@ -17,23 +17,23 @@ CHANNEL = {}
 SKIN_NO = {}
 END_MSG_ID = {}
 IST = pytz.timezone('Asia/Kolkata')
-OWNER = int(Config.OWNER_ID)
+OWNER = Config.OWNER_ID
 
 @Client.on_message(filters.private & filters.command(["index"]))
 async def run(bot, message):
-    if message.from_user.id != OWNER:
+    if message.from_user.id not in OWNER:
         await message.reply_text("Who the hell are you!!")
         return
     while True:
         try:
-            chat = await bot.ask(text = "To Index a channel send me channel id like <code>https://t.me/xxxxx</code>", chat_id = message.from_user.id, filters=filters.text, timeout=30)
+            chat = await bot.ask(text = "To Index a channel send me public channel link like <code>https://t.me/xxxxx</code>", chat_id = message.from_user.id, filters=filters.text, timeout=30)
             channel=chat.text
         except TimeoutError:
             await bot.send_message(message.from_user.id, "Error!!\n\nRequest timed out.\nRestart by using /index")
             return
 
-        if "-100" in chat.text:
-            result = "result"
+        pattern=".*https://t.me/.*"
+        result = re.match(pattern, channel, flags=re.IGNORECASE)
         if result:
             print(channel)
             break
@@ -41,16 +41,15 @@ async def run(bot, message):
             await chat.reply_text("Wrong URL")
             continue
 
-
-    #channel_id = re.search(r"t.me.(.*)", channel)
-    #chat_usr = channel_id.group(1)
+    channel_id = re.search(r"t.me.(.*)", channel)
+    chat_usr = channel_id.group(1)
     try:
-        chat = await bot.get_chat(int(chat.text))
+        chat = await bot.get_chat(chat_usr)
     except Exception as e:
         logger.exception(e)
         return await message.reply(f"{e}")
-    CHANNEL[message.from_user.id] = chat.username if chat.username else chat.id
-    
+    CHANNEL[message.from_user.id] = chat.username 
+
 
     while True:
         try:
@@ -63,7 +62,6 @@ async def run(bot, message):
             logger.info(SKIP.text)
         except TimeoutError:
             return await bot.send_message(message.from_user.id, "Error!!\n\nRequest timed out.\nRestart by using /index")
-
         try:
             SKIN_NO[message.from_user.id] = int(SKIP.text)
             break
@@ -82,55 +80,55 @@ async def run(bot, message):
             logger.info(end_id.text)
         except TimeoutError:
             return await bot.send_message(message.from_user.id, "Error!!\n\nRequest timed out.\nRestart by using /index")
-
         try:
             END_MSG_ID[message.from_user.id] = int(end_id.text)
             break
         except ValueError:
             await end_id.reply_text("That's an invalid ID. It should be an integer.")
             continue
-    try:
-        approvel = await bot.ask(
-            text="Send me  allmsgs or smedia\n\nallmsgs = index all messages\nsmedia = index only media",
-            chat_id=message.from_user.id,
-            filters=filters.text,
-            timeout=30
-        )
-    except Exception as e:
-        logger.exception(e)
-        pass
-    approve = approvel.text.lower()
-    if approve == "smedia":
-        filter = "media"
-    elif approve == "allmsgs":
-        filter = "allmsg"
-    else:
-        return  
-    user_id = message.from_user.id
-    await index_messages(bot, user_id, filter) 
+    buttons = InlineKeyboardMarkup(
+        [[
+            InlineKeyboardButton("Index Media", callback_data="index")
+        ],[
+            InlineKeyboardButton("Cancel", callback_data="cancel"),  
+        ]]
+    )
 
-async def index_messages(bot, user_id, filter):        
+    await bot.send_message(
+        chat_id=message.from_user.id,
+        text=f"Ok,\nNow choose what type of messages you want to forward.",
+        reply_markup=buttons
+    )
+
+@Client.on_callback_query()
+async def cb_handler(bot: Client, query: CallbackQuery):
+    filter = ""
+    if query.data == "index":
+        filter = "media"
+    elif query.data == "cancel":
+        return await query.message.delete()
+        
+    await query.message.delete()
+
     m = await bot.send_message(
         text="Indexing Started",
-        chat_id=user_id
+        chat_id=query.from_user.id
     )
+    user_id = query.from_user.id
     msg_count = 0
     mcount = 0
     deleted = 0
+    unsupported = 0
     lst_msg_id=END_MSG_ID.get(user_id)
-    try:
-        chat=int(CHANNEL.get(user_id))
-    except:
-        chat=CHANNEL.get(user_id)
-        pass
+    chat=CHANNEL.get(user_id)
     CURRENT=SKIN_NO.get(user_id) if SKIN_NO.get(user_id) else 0
-    id="bdhfhdhjdj73737"
-    message_id=7273683
-    channel_id=chat
     try:
         async for msg in bot.iter_messages(chat, lst_msg_id, CURRENT):
             if msg.empty:
                 deleted += 1
+                continue
+            if not msg.media:
+                unsupported += 1
                 continue
             if msg.video:
                 file_name = msg.video.file_name
@@ -145,28 +143,15 @@ async def index_messages(bot, user_id, filter):
             else:
                 m_caption = file_name
             if not m_caption:
-                m_caption = "None"
+                m_caption = "No Caption"
             caption = m_caption
             if filter == "media":
                 if msg.media:
                     if msg.media in [MessageMediaType.DOCUMENT, MessageMediaType.VIDEO, MessageMediaType.AUDIO, MessageMediaType.PHOTO]: 
                         media = getattr(msg, msg.media.value, None)
                         id=media.file_id
-                        file_type="media"
-            if filter == "allmsg":
-                if msg.media:
-                    if msg.media in [MessageMediaType.DOCUMENT, MessageMediaType.VIDEO, MessageMediaType.AUDIO, MessageMediaType.PHOTO]: 
-                        media = getattr(msg, msg.media.value, None)
-                        id=media.file_id
-                        file_type="media"
-                else:
-                    if msg.caption:
-                        file_type="messages"
-                        caption=msg.caption
-                        channel_id=chat
-                        message_id=msg.id
             try:
-                await save_data(id, caption, file_type, channel_id, message_id)
+                await save_data(id, caption)
             except Exception as e:
                 logger.exception(e)
                 await bot.send_message(OWNER, f"LOG-Error-{e}")
@@ -191,7 +176,7 @@ async def index_messages(bot, user_id, filter):
                     logger.exception(e)
                     pass
 
-        await m.edit(f"Succesfully Indexed <code>{msg_count}</code> messages.\n\nDeleted Message: {deleted}")
+        await m.edit(f"Succesfully Indexed <code>{msg_count}</code> messages.\n\nNon Media Files: {unsupported}\nDeleted Message: {deleted}")
 
     except Exception as e:
         logger.exception(e)
